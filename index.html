@@ -139,7 +139,6 @@ footer a{color:var(--accent-text)}
   </div>
 </div>
 
-<script src="clips.js"></script>
 <script>
 /* ===== settings ===== */
 // 投稿頁網址。留空就不顯示「投稿」連結。
@@ -164,7 +163,7 @@ const TAG_I18N={"笑聲":{ja:"笑い声",en:"Laugh"},"尖叫":{ja:"悲鳴",en:"S
  "名台詞":{ja:"名言",en:"Iconic line"},"歌聲":{ja:"歌声",en:"Singing"},"可愛":{ja:"かわいい",en:"Cute"},"崩潰":{ja:"発狂",en:"Meltdown"}};
 
 const $=id=>document.getElementById(id);
-const CLIPS=(window.MELA_CLIPS||[]).filter(c=>c&&c.title);
+let CLIPS=[];
 let lang="zh", activeTag=null, current=null, ytPlayer=null, ytReady=null;
 
 function pickLang(){ let l=null; try{l=localStorage.getItem("mela-lang")}catch(e){}
@@ -256,6 +255,8 @@ $("shuffle").onclick=()=>{ if(CLIPS.length) play(CLIPS[Math.floor(Math.random()*
 document.addEventListener("keydown",e=>{ if(e.key==="Escape"&&current) closePlayer(); });
 if(SUBMIT_URL){ $("submitLink").href=SUBMIT_URL; $("submitLink").hidden=false; }
 setLang(pickLang());
+fetch("clips.json",{cache:"no-cache"}).then(r=>r.json()).then(d=>{ CLIPS=(Array.isArray(d)?d:d.clips||[]).filter(c=>c&&c.title&&c.id); render(); })
+  .catch(()=>{ $("grid").innerHTML=`<div class="empty"><h2>clips.json</h2><p>${location.protocol==="file:"?"Open via GitHub Pages or a local server (python -m http.server).":"Could not load clips.json."}</p></div>`; });
 </script>
 </body>
 </html>
