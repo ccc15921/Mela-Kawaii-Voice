@@ -31,6 +31,7 @@ h1 .jp{color:var(--accent-text)}
 .sub{color:var(--muted);margin:6px 0 0;font-size:13px}
 .right{display:flex;flex-direction:column;align-items:flex-end;gap:10px}
 @media (max-width:600px){.right{flex-direction:row;align-items:center;justify-content:space-between;width:100%}}
+.hrow{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
 .count{font-family:var(--f-code);font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums}
 .count b{color:var(--ink);font-size:22px;font-weight:600}
 .lang{display:inline-flex;border:1px solid var(--line);border-radius:999px;padding:2px;background:var(--surface)}
@@ -102,7 +103,10 @@ footer a{color:var(--accent-text)}
         <button type="button" data-lang="ja">日本語</button>
         <button type="button" data-lang="en">EN</button>
       </div>
-      <span class="count"><b id="count">0</b> <span data-i18n="clips"></span></span>
+      <div class="hrow">
+        <span class="count"><b id="count">0</b> <span data-i18n="clips"></span></span>
+        <a class="btn primary" id="submitBtn" href="#" target="_blank" rel="noopener" hidden data-i18n="submit"></a>
+      </div>
     </div>
   </header>
 
@@ -121,7 +125,7 @@ footer a{color:var(--accent-text)}
   <div class="tags" id="tags"></div>
   <div class="grid" id="grid"></div>
 
-  <footer><span data-i18n="footer"></span> <a id="submitLink" href="#" target="_blank" rel="noopener" hidden data-i18n="submit"></a></footer>
+  <footer><span data-i18n="footer"></span></footer>
 </div>
 
 <div class="player" id="player" hidden>
@@ -141,26 +145,28 @@ footer a{color:var(--accent-text)}
 
 <script>
 /* ===== settings ===== */
-// 投稿頁網址。留空就不顯示「投稿」連結。
-// 注意：claude.ai 投稿頁只有你邀請的人（Editor）能投稿，一般訪客點進去只能看。
-const SUBMIT_URL = "";
+// ① Google 表單的分享連結（例如 https://forms.gle/xxxx）。留空就不顯示「投稿」按鈕。
+const SUBMIT_URL = "https://forms.gle/xqC6PYvhdrvtkV1N6";
+// ② Google 試算表「公開」分頁發佈成 CSV 的網址（…/pub?gid=…&single=true&output=csv）。留空就只讀 clips.json。
+const SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQIjhyIETZ-Ky_Nydc7RRi81T3SxLzJ0tROU5xJC9pYiPma7MWY4qhWxRoD9CQZVaPB6q00znizevlf/pub?gid=656485988&single=true&output=csv";
 
 const I18N={
  zh:{title:"聲音圖鑑",sub:"めらちゃん直播裡的笑聲、怪聲、名台詞，按一下就在這裡播放。",clips:"段聲音",search:"搜尋標題、台詞、標籤…",
    sortNew:"最新加入",sortStream:"直播日期",sortShort:"最短的先",random:"隨機播一段",all:"全部",replay:"重播",openOriginal:"在 YouTube 開啟",openX:"在 X 開啟",
    close:"關閉",copy:"複製連結",copied:"已複製",sec:"秒",fromStart:"從頭",noMatch:"找不到符合的片段",noMatchHint:"換個關鍵字，或點「全部」清除標籤篩選。",
-   none:"還沒有收錄任何聲音",noneHint:"片段審核通過後就會出現在這裡。",footer:"非官方粉絲整理。所有聲音都來自原直播／推文，請多去看本人的直播。",submit:"投稿新片段 →",play:"播放"},
+   none:"還沒有收錄任何聲音",noneHint:"片段審核通過後就會出現在這裡。",footer:"非官方粉絲整理。所有聲音都來自原直播／推文，請多去看本人的直播。",submit:"＋ 投稿片段",play:"播放"},
  ja:{title:"ボイス図鑑",sub:"めらちゃんの配信から笑い声・奇声・名言を集めました。押すとこのページで再生します。",clips:"件",search:"タイトル・セリフ・タグで検索…",
    sortNew:"新着順",sortStream:"配信日順",sortShort:"短い順",random:"ランダム再生",all:"すべて",replay:"もう一度",openOriginal:"YouTubeで開く",openX:"Xで開く",
    close:"閉じる",copy:"リンクをコピー",copied:"コピーしました",sec:"秒",fromStart:"最初から",noMatch:"該当するクリップがありません",noMatchHint:"キーワードを変えるか「すべて」でタグを解除してください。",
-   none:"まだクリップがありません",noneHint:"承認されたクリップがここに表示されます。",footer:"非公式ファンまとめです。音声はすべて元の配信・ポストから。ぜひ本人の配信を見に行ってください。",submit:"クリップを投稿 →",play:"再生"},
+   none:"まだクリップがありません",noneHint:"承認されたクリップがここに表示されます。",footer:"非公式ファンまとめです。音声はすべて元の配信・ポストから。ぜひ本人の配信を見に行ってください。",submit:"＋ クリップを投稿",play:"再生"},
  en:{title:"Voice Library",sub:"Laughs, weird noises and famous lines from Mera's streams. Press a button to play it right here.",clips:"clips",search:"Search titles, lines, tags…",
    sortNew:"Newest",sortStream:"Stream date",sortShort:"Shortest first",random:"Play a random one",all:"All",replay:"Replay",openOriginal:"Open on YouTube",openX:"Open on X",
    close:"Close",copy:"Copy link",copied:"Copied",sec:"s",fromStart:"From start",noMatch:"No matching clips",noMatchHint:"Try another keyword, or press “All” to clear the tag filter.",
-   none:"No clips yet",noneHint:"Approved clips will show up here.",footer:"Unofficial fan collection. Every sound links back to the original stream or post — go watch her streams!",submit:"Submit a clip →",play:"Play"}
+   none:"No clips yet",noneHint:"Approved clips will show up here.",footer:"Unofficial fan collection. Every sound links back to the original stream or post — go watch her streams!",submit:"+ Submit a clip",play:"Play"}
 };
 const TAG_I18N={"笑聲":{ja:"笑い声",en:"Laugh"},"尖叫":{ja:"悲鳴",en:"Scream"},"怪聲":{ja:"奇声",en:"Weird noise"},"口癖":{ja:"口癖",en:"Catchphrase"},
- "名台詞":{ja:"名言",en:"Iconic line"},"歌聲":{ja:"歌声",en:"Singing"},"可愛":{ja:"かわいい",en:"Cute"},"崩潰":{ja:"発狂",en:"Meltdown"}};
+ "名台詞":{ja:"名言",en:"Iconic line"},"歌聲":{ja:"歌声",en:"Singing"},"可愛":{ja:"かわいい",en:"Cute"},"崩潰":{ja:"発狂",en:"Meltdown"},
+ "打噴嚏":{ja:"くしゃみ",en:"Sneeze"},"打哈欠":{ja:"あくび",en:"Yawn"},"哼歌":{ja:"鼻歌",en:"Humming"},"語錄":{ja:"語録",en:"Quote"}};
 
 const $=id=>document.getElementById(id);
 let CLIPS=[];
@@ -253,10 +259,58 @@ $("q").addEventListener("input",render); $("sort").addEventListener("change",ren
 $("pReplay").onclick=replay; $("pClose").onclick=closePlayer;
 $("shuffle").onclick=()=>{ if(CLIPS.length) play(CLIPS[Math.floor(Math.random()*CLIPS.length)]); };
 document.addEventListener("keydown",e=>{ if(e.key==="Escape"&&current) closePlayer(); });
-if(SUBMIT_URL){ $("submitLink").href=SUBMIT_URL; $("submitLink").hidden=false; }
+if(SUBMIT_URL){ $("submitBtn").href=SUBMIT_URL; $("submitBtn").hidden=false; }
 setLang(pickLang());
-fetch("clips.json",{cache:"no-cache"}).then(r=>r.json()).then(d=>{ CLIPS=(Array.isArray(d)?d:d.clips||[]).filter(c=>c&&c.title&&c.id); render(); })
-  .catch(()=>{ $("grid").innerHTML=`<div class="empty"><h2>clips.json</h2><p>${location.protocol==="file:"?"Open via GitHub Pages or a local server (python -m http.server).":"Could not load clips.json."}</p></div>`; });
+loadAll();
+
+/* ===== data loading: clips.json + Google Sheet (published CSV) ===== */
+function parseCSV(text){ const rows=[]; let row=[],f="",q=false;
+  for(let i=0;i<text.length;i++){ const ch=text[i];
+    if(q){ if(ch==='"'){ if(text[i+1]==='"'){f+='"';i++;} else q=false; } else f+=ch; }
+    else if(ch==='"') q=true; else if(ch===","){ row.push(f); f=""; }
+    else if(ch==="\n"||ch==="\r"){ if(ch==="\r"&&text[i+1]==="\n") i++; row.push(f); rows.push(row); row=[]; f=""; }
+    else f+=ch; }
+  if(f!==""||row.length){ row.push(f); rows.push(row); } return rows.filter(r=>r.some(c=>c.trim()!==""));
+}
+function parseTime(v){ v=String(v??"").trim().replace(/[：]/g,":").replace(/\.\d+$/,""); if(!v) return null;
+  // 試算表有時會把 0:01:40 顯示成「上午 12:01:40」之類的時刻格式，在這裡轉回秒數
+  const pm=/下午|午後|PM/i.test(v), am=/上午|午前|AM/i.test(v); v=v.replace(/上午|下午|午前|午後|AM|PM/gi,"").trim();
+  if(/^\d+$/.test(v)) return +v; const p=v.split(":").map(Number); if(p.some(isNaN)||p.length>3) return null;
+  if(p.length===3&&(am||pm)){ if(am&&p[0]===12) p[0]=0; if(pm&&p[0]<12) p[0]+=12; }
+  return p.reduce((a,x)=>a*60+x,0); }
+function parseClipUrl(u){ try{ const url=new URL(String(u).trim()); const host=url.hostname.replace(/^www\.|^m\./,"");
+    if(host==="youtu.be"||host.endsWith("youtube.com")){ let id=url.searchParams.get("v"); if(host==="youtu.be") id=url.pathname.slice(1).split("/")[0];
+      const pm=url.pathname.match(/^\/(live|shorts|embed)\/([\w-]{6,})/); if(!id&&pm) id=pm[2]; if(!id) return null;
+      const tt=url.searchParams.get("t")||url.searchParams.get("start"); let t=null;
+      if(tt){ const m=tt.match(/^(?:(\d+)h)?(?:(\d+)m)?(?:(\d+)s?)?$/); t=m?(+m[1]||0)*3600+(+m[2]||0)*60+(+m[3]||0):null; }
+      return {src:"youtube",vid:id,url:`https://www.youtube.com/watch?v=${id}`,t}; }
+    if(["x.com","twitter.com","mobile.twitter.com"].includes(host)&&/\/status\/\d+/.test(url.pathname)) return {src:"x",url:url.origin+url.pathname};
+  }catch(e){} return null; }
+function normDate(v){ v=String(v||"").trim(); const p2=n=>String(n).padStart(2,"0");
+  let m=v.match(/(\d{4})\D(\d{1,2})\D(\d{1,2})/); if(m) return `${m[1]}-${p2(m[2])}-${p2(m[3])}`;
+  m=v.match(/^(\d{1,2})\D(\d{1,2})\D(\d{4})/); if(m) return `${m[3]}-${p2(m[1])}-${p2(m[2])}`; return v||null; }
+// 依標題文字找欄位，表單題目順序不同也沒關係
+const COLS={ts:["時間戳記","タイムスタンプ","timestamp"],url:["網址","url","link","連結"],start:["開始"],end:["結束"],title:["標題","タイトル","title"],
+  quote:["台詞","セリフ","quote"],tags:["標籤","タグ","tag"],note:["備註","メモ","note"],date:["日期","配信日","date"]};
+function sheetToClips(text){
+  const rows=parseCSV(text); if(rows.length<2) return [];
+  const head=rows[0].map(h=>h.trim().toLowerCase()); const idx={};
+  for(const k in COLS) idx[k]=head.findIndex(h=>COLS[k].some(w=>h.includes(w.toLowerCase())));
+  const get=(r,k)=>idx[k]>=0?(r[idx[k]]||"").trim():"";
+  return rows.slice(1).map((r,i)=>{ const p=parseClipUrl(get(r,"url")); const title=get(r,"title"); if(!p||!title) return null;
+    let start=parseTime(get(r,"start")); const end=parseTime(get(r,"end")); if(start==null&&p.t!=null) start=p.t;
+    return {id:"g"+hash(get(r,"ts")+"|"+get(r,"url")+"|"+i).toString(36),src:p.src,vid:p.vid||null,url:p.url,start,end:(end!=null&&start!=null&&end<=start)?null:end,
+      title,quote:get(r,"quote"),note:get(r,"note"),tags:[...new Set(get(r,"tags").split(/[,，、\s]+/).map(x=>x.replace(/^[#＃]/,"").trim()).filter(Boolean))].slice(0,12),
+      streamDate:normDate(get(r,"date")),addedAt:2e12+i}; }).filter(Boolean);
+}
+async function loadAll(){
+  const tasks=[fetch("clips.json",{cache:"no-cache"}).then(r=>r.ok?r.json():[]).then(d=>(Array.isArray(d)?d:d.clips||[]).filter(c=>c&&c.title&&c.id)).catch(()=>[])];
+  if(SHEET_CSV_URL) tasks.push(fetch(SHEET_CSV_URL+(SHEET_CSV_URL.includes("?")?"&":"?")+"_="+Date.now()).then(r=>r.ok?r.text():"").then(sheetToClips).catch(e=>{ console.warn("sheet load failed",e); return []; }));
+  const lists=await Promise.all(tasks); const seen=new Set(); CLIPS=[];
+  for(const c of lists.flat()){ const key=(c.vid||c.url)+"@"+(c.start??""); if(seen.has(key)) continue; seen.add(key); CLIPS.push(c); }
+  if(!CLIPS.length&&location.protocol==="file:"){ $("grid").innerHTML=`<div class="empty"><h2>clips.json</h2><p>Open via GitHub Pages or a local server (python -m http.server).</p></div>`; return; }
+  render();
+}
 </script>
 </body>
 </html>
