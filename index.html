@@ -272,7 +272,9 @@ function parseCSV(text){ const rows=[]; let row=[],f="",q=false;
     else f+=ch; }
   if(f!==""||row.length){ row.push(f); rows.push(row); } return rows.filter(r=>r.some(c=>c.trim()!==""));
 }
-function parseTime(v){ v=String(v??"").trim().replace(/[：]/g,":").replace(/\.\d+$/,""); if(!v) return null;
+function parseTime(v){ v=String(v??"").trim().replace(/[：]/g,":");
+  if(/^\d*\.\d+$/.test(v)&&+v<1) return Math.round(+v*86400); // 試算表把時間存成「一天的幾分之幾」
+  v=v.replace(/\.\d+$/,""); if(!v) return null;
   // 試算表有時會把 0:01:40 顯示成「上午 12:01:40」之類的時刻格式，在這裡轉回秒數
   const pm=/下午|午後|PM/i.test(v), am=/上午|午前|AM/i.test(v); v=v.replace(/上午|下午|午前|午後|AM|PM/gi,"").trim();
   if(/^\d+$/.test(v)) return +v; const p=v.split(":").map(Number); if(p.some(isNaN)||p.length>3) return null;
@@ -287,20 +289,24 @@ function parseClipUrl(u){ try{ const url=new URL(String(u).trim()); const host=u
     if(["x.com","twitter.com","mobile.twitter.com"].includes(host)&&/\/status\/\d+/.test(url.pathname)) return {src:"x",url:url.origin+url.pathname};
   }catch(e){} return null; }
 function normDate(v){ v=String(v||"").trim(); const p2=n=>String(n).padStart(2,"0");
+  // 試算表日期序號（例如 46295 = 2026-09-30）
+  if(/^\d{5}(\.\d+)?$/.test(v)){ const d=new Date(Date.UTC(1899,11,30)+Math.floor(+v)*864e5); return `${d.getUTCFullYear()}-${p2(d.getUTCMonth()+1)}-${p2(d.getUTCDate())}`; }
   let m=v.match(/(\d{4})\D(\d{1,2})\D(\d{1,2})/); if(m) return `${m[1]}-${p2(m[2])}-${p2(m[3])}`;
   m=v.match(/^(\d{1,2})\D(\d{1,2})\D(\d{4})/); if(m) return `${m[3]}-${p2(m[1])}-${p2(m[2])}`; return v||null; }
 // 依標題文字找欄位，表單題目順序不同也沒關係
-const COLS={ts:["時間戳記","タイムスタンプ","timestamp"],url:["網址","url","link","連結"],start:["開始"],end:["結束"],title:["標題","タイトル","title"],
+const COLS={ts:["時間戳記","タイムスタンプ","timestamp"],url:["網址","url","link","連結"],start:["開始","开始","start"],end:["結束","结束","終了","end"],title:["標題","タイトル","title"],
   quote:["台詞","セリフ","quote"],tags:["標籤","タグ","tag"],note:["備註","メモ","note"],date:["日期","配信日","date"]};
 function sheetToClips(text){
   const rows=parseCSV(text); if(rows.length<2) return [];
   const head=rows[0].map(h=>h.trim().toLowerCase()); const idx={};
   for(const k in COLS) idx[k]=head.findIndex(h=>COLS[k].some(w=>h.includes(w.toLowerCase())));
+  if(idx.end<0&&idx.start>=0) idx.end=idx.start+1; // 找不到「結束」就用開始時間的下一欄
+  console.info("[mela] sheet columns",rows[0],idx);
   const get=(r,k)=>idx[k]>=0?(r[idx[k]]||"").trim():"";
   return rows.slice(1).map((r,i)=>{ const p=parseClipUrl(get(r,"url")); const title=get(r,"title"); if(!p||!title) return null;
     let start=parseTime(get(r,"start")); const end=parseTime(get(r,"end")); if(start==null&&p.t!=null) start=p.t;
     return {id:"g"+hash(get(r,"ts")+"|"+get(r,"url")+"|"+i).toString(36),src:p.src,vid:p.vid||null,url:p.url,start,end:(end!=null&&start!=null&&end<=start)?null:end,
-      title,quote:get(r,"quote"),note:get(r,"note"),tags:[...new Set(get(r,"tags").split(/[,，、\s]+/).map(x=>x.replace(/^[#＃]/,"").trim()).filter(Boolean))].slice(0,12),
+      title,quote:get(r,"quote"),note:get(r,"note"),tags:[...new Set(get(r,"tags").split(/[,，、\s]+/).map(x=>x.split(/[／\/]/)[0].replace(/^[#＃]/,"").trim()).filter(Boolean))].slice(0,12),
       streamDate:normDate(get(r,"date")),addedAt:2e12+i}; }).filter(Boolean);
 }
 async function loadAll(){
